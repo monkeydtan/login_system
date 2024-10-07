@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import messagebox
 from PIL import Image, ImageTk
 from regis_page import open_regis_page
+import sqlite3
+import bcrypt
 
 app = tk.Tk()
 app.title("กรอกชื่อ")
@@ -26,15 +28,15 @@ head_title.grid(row=0,columnspan=2)
 fname = tk.Label(frame_window,text="Username : ")
 fname.grid(row=1,column=0)
 
-entry_fname = tk.Entry(frame_window,bd=2)
-entry_fname.grid(row=1,column=1)
+entry_username = tk.Entry(frame_window,bd=2)
+entry_username.grid(row=1,column=1)
 
 # รหัสผ่าน
 lname = tk.Label(frame_window,text="Password : ")
 lname.grid(row=2,column=0)
 
-entry_lname = tk.Entry(frame_window,bd=2,show="*")
-entry_lname.grid(row=2,column=1,pady=5)
+entry_password = tk.Entry(frame_window,bd=2,show="*")
+entry_password.grid(row=2,column=1,pady=5)
 
 def on_click(event):
     print("Click this!")
@@ -65,11 +67,11 @@ show_password = False # สร้างตัวแปรขึ้นว่า �
 def view_and_hide():
     global show_password
     if show_password:
-        entry_lname.config(show="*")  #เป็น default เท่ากับว่า * คือ false / ตัวเลข คือ True
+        entry_password.config(show="*")  #เป็น default เท่ากับว่า * คือ false / ตัวเลข คือ True
         icon_eye.config(image=eyes_view_img) # default คือ eye view
         show_password = False
     else:
-        entry_lname.config(show="")
+        entry_password.config(show="")
         icon_eye.config(image=eyes_hide_img)
         show_password = True
     
@@ -78,13 +80,29 @@ icon_eye = tk.Button(frame_window,image=eyes_view_img,width=13,height=13,command
 icon_eye.grid(row=2,column=2)
 
 # ฟังก์ชันการกดปุ่ม login
-def user_id():
-    str_name = entry_fname.get() # .get คือการรับข้อความจากช่องข้อความ มาเก็บไว้ในตัวแปร ซึ่งชื่อ str_name
-    str_pw = entry_lname.get()
+def login_user():
+    str_name = entry_username.get() # .get คือการรับข้อความจากช่องข้อความ มาเก็บไว้ในตัวแปร ซึ่งชื่อ str_name
+    str_pw = entry_password.get()
+    
     if not str_name or not str_pw:
-        messagebox.showerror("พบข้อผิดพลาด","Username หรือ Password ไม่ถูกต้อง")
+        messagebox.showerror("Error","กรุณากรอก Username หรือ Password ให้ถูกต้อง")
+        return
+    
+    conn = sqlite3.connect("users.db")
+    cursor = conn.cursor()
+    cursor.execute('''
+       SELECT password 
+       FROM users
+       WHERE username =?         
+    ''',(str_name,))
+    
+    result = cursor.fetchone() # ดึงข้อมูลแถวแรก
+    conn.close() # ปิดการเชื่อมต่อฐานข้อมูล
+    
+    if result and bcrypt.checkpw(str_pw.encode('utf-8'), result[0]):
+        messagebox.showinfo("Success","เข้าสู่ระบบสำเร็จ")
     else:
-        messagebox.showinfo("เข้าสู่ระบบสำเร็จ","Login Successful ! \nWelcome "+str_name)
+        messagebox.showinfo("Error","username หรือ password ไม่ถูกต้อง")
 
 
 # สร้างหน้าต่างใหม่
@@ -97,7 +115,7 @@ sub_btn_frame = tk.Frame(frame_window)
 sub_btn_frame.grid(row=4,column=1)
 
 # ปุ่ม Login
-submit_btn = tk.Button(sub_btn_frame,text="Login",command=user_id)
+submit_btn = tk.Button(sub_btn_frame,text="Login",command=login_user)
 submit_btn.grid(row=0,column=0,sticky="w",padx=(0,10)) # sticky e คือ ชิดขอบขวา / w คือ ชิดขอบซ้าย
 # ปุ่ม Register
 regis_btn = tk.Button(sub_btn_frame,text="Register",command=new_window_regis) #command คือมันจะไปหน้าใหม่ (เพิ่ม delay)
